@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 from optparse import OptionParser
-import os
+import os, sys
 from subprocess import Popen
 
 
-def Option_Parser():
+def Option_Parser(argv):
 
     usage='usage: %prog [options] arg\n'
     usage+='This is script which can automatically produce a crab config file depending on the option you choose.\n'
@@ -57,13 +57,13 @@ def Option_Parser():
             help='the remote mechine in which output files are stored'
             )
 
-    (options, args) = parser.parse_args()
+    (options, args) = parser.parse_args(argv)
     return options
 
 
-def createCrab3Config ():
+def createCrab3Config (argv):
 
-    options = Option_Parser()
+    options = Option_Parser(argv)
 
     jobname = ''
     if not options.MCGEN:
@@ -129,4 +129,4 @@ def createCrab3Config ():
     print 'Writting to file %s. Do not sumbit crab jobs directly using this version! At most use crab submit --dryrun!' % jobname
 
 if  __name__ == '__main__':
-    createCrab3Config()
+    sys.exit( createCrab3Config(sys.argv[1:]) )
