@@ -37,12 +37,16 @@ def Option_Parser(argv):
             help='MC sample name you want to gen'
             )
     parser.add_option('-t', '--tag',
-            type='str', dest='tag', default='RunIIFall17MC',
-            help='tag your gen MC name'
+            type='str', dest='tag', default='RunIIFall17',
+            help='tag your output dataset'
+            )
+    parser.add_option('-p', '--publish',
+            action='store_true', dest='publish',
+            help='Publish the output dataset which can find in DAS but this ouput file need EDM format'
             )
     parser.add_option('-c', '--configfile',
             type='str', dest='configfile',
-            help='Input your config file like yourconfigfile.py'
+            help='Input your config file like your configfile.py'
             )
     parser.add_option('--option',
             type='str', dest='option', default='',
@@ -95,7 +99,6 @@ def createCrab3Config (argv):
             config_file.write("config.Data.inputDBS = 'global'\n")
         else:
             config_file.write("config.Data.outputPrimaryDataset = '%s'\n" % options.MCSample)
-            config_file.write("config.Data.outputDatasetTag = '%s'\n" % options.tag)
 
         splittingtype = ''
         unitsPerJob = 0
@@ -116,7 +119,10 @@ def createCrab3Config (argv):
 
         if options.Data:
             config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions17/13TeV/PromptReco/Cert_294927-303825_13TeV_PromptReco_Collisions17_JSON.txt'\n")
-        config_file.write("config.Data.outLFNDirBase = '%s'\n\n" % options.outdir)
+        config_file.write("config.Data.outLFNDirBase = '%s'\n" % options.outdir)
+        if options.publish:
+            config_file.write("config.Data.publication = True\n")
+        config_file.write("config.Data.outputDatasetTag = '%s'\n\n" % (options.tag + '_' + jobname))
 
         config_file.write("config.section_('Site')\n")
         config_file.write("config.Site.storageSite = '%s'\n" % options.remote)
