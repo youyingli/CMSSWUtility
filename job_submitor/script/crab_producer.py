@@ -53,7 +53,7 @@ def Option_Parser(argv):
             help='Input config file options if it needs'
             )
     parser.add_option('-o', '--outdir',
-            type='str', dest='outdir', default='/store/user/youying/mydir',
+            type='str', dest='outdir', default='/store/user/youying',
             help='Output directory in some remote mechine which is specified by --remote option'
             )
     parser.add_option('--remote',
