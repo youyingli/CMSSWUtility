@@ -118,7 +118,7 @@ def createCrab3Config (argv):
             config_file.write("config.Data.totalUnits = %d\n" % (unitsPerJob * njobs))
 
         if options.Data:
-            config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions17/13TeV/PromptReco/Cert_294927-303825_13TeV_PromptReco_Collisions17_JSON.txt'\n")
+            config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions17/13TeV/PromptReco/Cert_294927-305636_13TeV_PromptReco_Collisions17_JSON.txt'\n")
         config_file.write("config.Data.outLFNDirBase = '%s'\n" % options.outdir)
         if options.publish:
             config_file.write("config.Data.publication = True\n")
