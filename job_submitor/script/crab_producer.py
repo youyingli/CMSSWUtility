@@ -118,7 +118,13 @@ def createCrab3Config (argv):
             config_file.write("config.Data.totalUnits = %d\n" % (unitsPerJob * njobs))
 
         if options.Data:
-            config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions17/13TeV/PromptReco/Cert_294927-306462_13TeV_PromptReco_Collisions17_JSON.txt'\n")
+            if os.environ["CMSSW_VERSION"].count("CMSSW_9_4"):
+                config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions17/13TeV/ReReco/Cert_294927-306462_13TeV_EOY2017ReReco_Collisions17_JSON.txt'\n")
+            elif os.environ["CMSSW_VERSION"].count("CMSSW_8_0"):
+                config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'\n")
+            else:
+                print 'Please click cmsenv or your cmssw is too old to be supported'
+
         config_file.write("config.Data.outLFNDirBase = '%s'\n" % options.outdir)
         if options.publish:
             config_file.write("config.Data.publication = True\n")
