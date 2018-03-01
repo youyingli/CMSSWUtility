@@ -37,7 +37,7 @@ void StdComparisonPlotProducer::SetBenchmark (const vector<string>& filenames, b
     PackPlot(filenames, "hData");
     if (normtounity) _th1service.GetPlot("hData")->SetScaleWeight(1. / _th1service.GetPlot("hData")->GetEventN());
     _th1service.GetPlot("hData")->ConvertToPointPlot(kBlack, 20, 0.8);
-    _legend->AddEntry(_th1service.GetPlot("hData")->GetSnapShot(), "hData", "PL");
+    _legend->AddEntry(_th1service.GetPlot("hData")->GetSnapShot(), "Data", "PL");
     _isdata = true;
 }
 
