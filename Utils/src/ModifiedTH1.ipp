@@ -72,7 +72,8 @@ void ModifiedTH1<T>::ConvertToPointPlot (Color_t color, Style_t style, Size_t si
     _plot->SetMarkerColor(color);
     _plot->SetMarkerStyle(style);
     _plot->SetMarkerSize(size);
-    _plot->GetYaxis()->SetTitleOffset(1.2);
+    SetCommonAxis();
+    //_plot->GetYaxis()->SetTitleOffset(1.2);
 }
 
 template <typename T>
@@ -109,7 +110,7 @@ template <typename T>
 void ModifiedTH1<T>::SetXYaxis (const string& xLabel, const string& yLabel, const string& invisible)
 {
     _plot->GetXaxis()->SetTitle(xLabel.c_str());
-    _plot->GetXaxis()->SetTitle(yLabel.c_str());
+    _plot->GetYaxis()->SetTitle(yLabel.c_str());
     if (invisible == "X") _plot->GetXaxis()->SetLabelSize(0.);
     if (invisible == "Y") _plot->GetYaxis()->SetLabelSize(0.);
     if (invisible == "XY") {
