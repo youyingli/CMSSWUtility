@@ -184,6 +184,13 @@ void ModifiedTH1<T>::SetBinContent (const vector<pair<double,double>>& contentse
 }
 
 template <typename T>
+double ModifiedTH1<T>::GetPeakPosition () const
+{
+    int binmax = _plot->GetMaximumBin();
+    return _plot->GetXaxis()->GetBinCenter(binmax);
+}
+
+template <typename T>
 void ModifiedTH1<T>::SetCommonAxis ()
 {
     _plot->SetTitleFont(42,"xyz");

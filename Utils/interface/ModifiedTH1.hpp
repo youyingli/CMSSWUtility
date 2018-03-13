@@ -44,6 +44,7 @@ namespace plotmgr
             double GetMaxContent () const {return _plot -> GetMaximum();}
             std::vector<std::pair<double,double>> GetBinContent () const;
             std::pair<double,double> GetXRange () const {return std::make_pair(_plot->GetXaxis()->GetXmin(), _plot->GetXaxis()->GetXmax());}
+            double GetPeakPosition () const;
             T* GetSnapShot ();
 
         private:
