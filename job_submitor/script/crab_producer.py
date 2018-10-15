@@ -2,8 +2,6 @@
 
 from optparse import OptionParser
 import os, sys
-from subprocess import Popen
-
 
 def Option_Parser(argv):
 
@@ -72,7 +70,7 @@ def createCrab3Config (argv):
     jobname = ''
     if not options.MCGEN:
         datasetlist = options.dataset.split('/')
-        jobname = datasetlist[1] + '_' + datasetlist[2]
+        jobname = options.tag + "_" + datasetlist[1]
     else:
         jobname = options.MCSample + '_GEM'
 
@@ -128,15 +126,10 @@ def createCrab3Config (argv):
         config_file.write("config.Data.outLFNDirBase = '%s'\n" % options.outdir)
         if options.publish:
             config_file.write("config.Data.publication = True\n")
-        config_file.write("config.Data.outputDatasetTag = '%s'\n\n" % (options.tag + '_' + jobname))
+        config_file.write("config.Data.outputDatasetTag = '%s'\n\n" % jobname)
 
         config_file.write("config.section_('Site')\n")
         config_file.write("config.Site.storageSite = '%s'\n" % options.remote)
-
-    if not os.environ.get('CRAB3_PY_ROOT'):
-        #os.system('source /cvmfs/cms.cern.ch/crab3/crab.sh')
-        #subprocess.Popen(['source', '/cvmfs/cms.cern.ch/crab3/crab.sh'])
-        Popen("source /cvmfs/cms.cern.ch/crab3/crab.sh", shell=True, executable="/bin/bash")
 
     print 'Writting to file %s. Do not sumbit crab jobs directly using this version! At most use crab submit --dryrun!' % jobname
 
