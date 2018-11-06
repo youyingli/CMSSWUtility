@@ -11,20 +11,12 @@ def Option_Parser(argv):
     parser = OptionParser(usage=usage)
 
     parser.add_option('-d', '--dataset',
-            type='str', dest='dataset', default='/SingleMuon/Run2017B-PromptReco-v1/MINIAOD',
+            type='str', dest='dataset', default='/ZMM*/*/MINIAOD',
             help='input your dataset like /ZMM*/*/MINIAOD from DAS'
             )
     parser.add_option('-w', '--workarea',
             type='str', dest='workarea', default=os.environ.get('USER') + '_crab',
             help='input workarea name you want. Default is your name'
-            )
-    parser.add_option('--Data',
-            action='store_true', dest='Data',
-            help='Run Real Data'
-            )
-    parser.add_option('--MC',
-            action='store_true', dest='MC',
-            help='Run MC event generation'
             )
     parser.add_option('--MCGEN',
             action='store_true', dest='MCGEN',
@@ -68,9 +60,20 @@ def createCrab3Config (argv):
     options = Option_Parser(argv)
 
     jobname = ''
+    isData = False
+    year = ''
+    datasetlist = options.dataset.split('/')
+
     if not options.MCGEN:
-        datasetlist = options.dataset.split('/')
+        index = datasetlist[2].find('Run20')
+        if index != -1:
+            isData = True
+            year = datasetlist[2][index+3:index+7]
+
         jobname = options.tag + "_" + datasetlist[1]
+
+        if isData:
+            jobname += ('_' + datasetlist[2])
     else:
         jobname = options.MCSample + '_GEM'
 
@@ -82,7 +85,7 @@ def createCrab3Config (argv):
         config_file.write("config.General.requestName = '%s'\n" % jobname)
         config_file.write("config.General.workArea = '%s'\n" % options.workarea)
         config_file.write("config.General.transferOutputs = True\n")
-        config_file.write("config.General.transferLogs = True\n\n")
+        config_file.write("config.General.transferLogs = False\n\n")
 
         config_file.write("config.section_('JobType')\n")
         config_file.write("config.JobType.pluginName = '%s'\n" % ('Analysis' if not options.MCGEN else 'PrivateMC'))
@@ -94,19 +97,20 @@ def createCrab3Config (argv):
         config_file.write("config.section_('Data')\n")
         if not options.MCGEN:
             config_file.write("config.Data.inputDataset = '%s'\n" % options.dataset)
-            config_file.write("config.Data.inputDBS = 'global'\n")
+            config_file.write("config.Data.inputDBS = '%s'\n" % ('global' if datasetlist[3].find('USER') == -1 else 'phys03'))
         else:
             config_file.write("config.Data.outputPrimaryDataset = '%s'\n" % options.MCSample)
 
         splittingtype = ''
         unitsPerJob = 0
-        if options.Data:
-            splittingtype = 'LumiBased'
-            unitsPerJob = 15
-        elif options.MC:
-            splittingtype = 'FileBased'
-            unitsPerJob = 1
-        elif options.MCGEN:
+        if not options.MCGEN:
+            if isData:
+                splittingtype = 'LumiBased'
+                unitsPerJob = 15
+            else:
+                splittingtype = 'FileBased'
+                unitsPerJob = 1
+        else:
             splittingtype = 'EventBased'
             unitsPerJob = 10
         config_file.write("config.Data.splitting = '%s'\n" % splittingtype)
@@ -115,13 +119,13 @@ def createCrab3Config (argv):
             njobs = 100
             config_file.write("config.Data.totalUnits = %d\n" % (unitsPerJob * njobs))
 
-        if options.Data:
-            if os.environ["CMSSW_VERSION"].count("CMSSW_9_4"):
+        if isData:
+            if year == '2017':
                 config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions17/13TeV/ReReco/Cert_294927-306462_13TeV_EOY2017ReReco_Collisions17_JSON.txt'\n")
-            elif os.environ["CMSSW_VERSION"].count("CMSSW_8_0"):
+            elif year == '2016':
                 config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'\n")
             else:
-                print 'Please click cmsenv or your cmssw is too old to be supported'
+                print 'Please check your dataset name. The script only support 2016 and 2017 dataset'
 
         config_file.write("config.Data.outLFNDirBase = '%s'\n" % options.outdir)
         if options.publish:
