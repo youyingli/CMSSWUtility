@@ -31,6 +31,11 @@ def Option_Parser(argv):
             type='str', dest='output', default = 'fileinfo2017.json',
             help='create a file with MC info recorded if the file is not exist, but exist, the progrem will update the file if this info is not in this file'
             )
+    parser.add_option('--force',
+            action='store_true', dest='force',
+            help='force to get events info even if the mc you specify is exist in outfile'
+            )
+
 
     (options, args) = parser.parse_args(argv)
     return options
@@ -50,10 +55,10 @@ def GetRealGenNumber (file, puweight, q):
             if fin and not fin.IsZombie():
                 break
         if not fin or fin.IsZombie():
-            q.put(0)
+            q.put( [0, file] )
             sys.exit(0)
     except:
-        q.put(0)
+        q.put( [0, file] )
         sys.exit(0)
 
     events = Events (filelink)
@@ -75,8 +80,7 @@ def GetRealGenNumber (file, puweight, q):
                 nip = pu.getTrueNumInteractions()
                 break
         nevent += ( gen_handle.product().weight() * puweight[int(nip)] if nip > 0 and nip < len(puweight) else 0 )
-
-    q.put( nevent )
+    q.put( [nevent, ''] )
 
 def GetFileList(filename):
 
@@ -161,9 +165,14 @@ class ParallelCalculator():
 
     def getoutput (self):
         num = 0
+        missfiles = list()
         for iout in range( len(self.filelist) ):
-            num += self.queue.get()
-        return num
+            event, file = self.queue.get()
+            if file is not '':
+                missfiles.append( file )
+            else:
+                num += event
+        return num, missfiles
 
 
 def GetPuweightFactor(PileupCfi, minBiasPileup):
@@ -173,7 +182,7 @@ def GetPuweightFactor(PileupCfi, minBiasPileup):
     m = importlib.import_module( PileupCfi )
     pileup_mc = m.mix.input.nbPileupEvents.probValue
 
-    minBias_file = ROOT.TFile( minBiasPileup )
+    minBias_file = ROOT.TFile.Open( minBiasPileup, 'READ' )
     h1_minBias_pileup = minBias_file.Get('pileup')
     pileup_minBias = map( h1_minBias_pileup.GetBinContent, xrange(1, h1_minBias_pileup.GetNbinsX()+1) )
     minBias_file.Close()
@@ -193,9 +202,11 @@ def GetInfo(options):
     p = ParallelCalculator(GetRealGenNumber, filelist, puweight, options.ncore)
     p.start()
 
+    events, missfiles = p.getoutput()
     output = { options.dataset.split('/')[1] : {
-                                "Events"    : p.getoutput() ,
-                                "Puweight"  : puweight
+                                "Events"    : events,
+                                "Puweight"  : puweight,
+                                "Missfile"  : missfiles
                     }
               }
 
@@ -214,9 +225,12 @@ def main(argv):
             oldinfo = json.loads( f.read() )
 
             if options.dataset.split('/')[1] in oldinfo:
-                print '%s information has been exist in %s. skip !' % (options.dataset.split('/')[1], options.output)
-                f.close()
-                exit(0)
+                if not options.force:
+                    print '%s information has been exist in %s. skip !' % (options.dataset.split('/')[1], options.output)
+                    f.close()
+                    exit(0)
+                else:
+                    del oldinfo[ options.dataset.split('/')[1] ]
 
             oldinfo.update(GetInfo(options))
             f.seek(0)
