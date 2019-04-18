@@ -69,6 +69,7 @@ def GetRealGenNumber (file, puweight, q):
 
     ROOT.gROOT.SetBatch()        # don't pop up canvases
     nevent = 0
+    sumweight = 0
     for event in events:
         # use getByLabel, just like in cmsRun
         event.getByLabel( pileup_label, pileup_handle )
@@ -79,8 +80,9 @@ def GetRealGenNumber (file, puweight, q):
             if pu.getBunchCrossing() == 0:
                 nip = pu.getTrueNumInteractions()
                 break
-        nevent += ( gen_handle.product().weight() * puweight[int(nip)] if nip > 0 and nip < len(puweight) else 0 )
-    q.put( [nevent, ''] )
+        nevent += 1
+        sumweight += ( gen_handle.product().weight() * puweight[int(nip)] if nip > 0 and nip < len(puweight) else 0 )
+    q.put( [nevent, sumweight, ''] )
 
 def GetFileList(filename):
 
@@ -165,14 +167,16 @@ class ParallelCalculator():
 
     def getoutput (self):
         num = 0
+        numw = 0
         missfiles = list()
         for iout in range( len(self.filelist) ):
-            event, file = self.queue.get()
+            event, sumweight, file = self.queue.get()
             if file is not '':
                 missfiles.append( file )
             else:
                 num += event
-        return num, missfiles
+                numw += sumweight
+        return num, numw, missfiles
 
 
 def GetPuweightFactor(PileupCfi, minBiasPileup):
@@ -202,9 +206,10 @@ def GetInfo(options):
     p = ParallelCalculator(GetRealGenNumber, filelist, puweight, options.ncore)
     p.start()
 
-    events, missfiles = p.getoutput()
+    events, sumweight, missfiles = p.getoutput()
     output = { options.dataset.split('/')[1] : {
                                 "Events"    : events,
+                                "Weight"    : sumweight,
                                 "Puweight"  : puweight,
                                 "Missfile"  : missfiles
                     }
