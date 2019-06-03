@@ -120,10 +120,12 @@ def createCrab3Config (argv):
             config_file.write("config.Data.totalUnits = %d\n" % (unitsPerJob * njobs))
 
         if isData:
-            if year == '2017':
+            if year == '2018':
+                config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions18/13TeV/ReReco/Cert_314472-325175_13TeV_17SeptEarlyReReco2018ABC_PromptEraD_Collisions18_JSON.txt'\n")
+            elif year == '2017':
                 config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions17/13TeV/ReReco/Cert_294927-306462_13TeV_EOY2017ReReco_Collisions17_JSON.txt'\n")
             elif year == '2016':
-                config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_23Sep2016ReReco_Collisions16_JSON.txt'\n")
+                config_file.write("config.Data.lumiMask = 'https://cms-service-dqm.web.cern.ch/cms-service-dqm/CAF/certification/Collisions16/13TeV/ReReco/Final/Cert_271036-284044_13TeV_ReReco_07Aug2017_Collisions16_JSON.txt'\n")
             else:
                 print 'Please check your dataset name. The script only support 2016 and 2017 dataset'
 
