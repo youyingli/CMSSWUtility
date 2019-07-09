@@ -25,6 +25,7 @@ cmsRun {1} inputFiles={2} outputFile={3}
 """
 
 from optparse import OptionParser
+from CMSSWUtility.job_submitor.DASClient import DASClient
 import os, sys
 import subprocess
 
@@ -69,33 +70,10 @@ def getProxy():
     os.system('grid-proxy-init -debug -verify')
     os.system('voms-proxy-init -voms cms -rfc -out ${HOME}/.x509up_u${UID} --valid 168:00')
 
-def GetFileList(filename):
-
-    filetype = filename.split('/')[3]
-
-    query = 'file dataset=%s ' % filename
-    if filetype == 'USER':
-        query += 'instance=prod/phys03'
-
-    print 'Opening ' + filename
-
-    s = subprocess.Popen("dasgoclient -query='%s'" % query, shell=True, stdout=subprocess.PIPE)
-    stdout, err = s.communicate()
-    filelist = stdout.split('\n')
-
-    if len(filelist) == 1:
-        exit(0)
-        print 'Fail to open file ! Please check %s name' % filename
-    else:
-        print 'Sucessfully Open ' + filename
-
-    del filelist[-1]
-
-    return filelist
-
 def HTCondorSubmitter (argv):
 
     options = Option_Parser(argv)
+    das = DASClient(options.dataset) 
 
     os.system('mkdir -p %s' % options.workspace)
     os.system('mkdir -p %s' % options.outdir)
@@ -103,7 +81,7 @@ def HTCondorSubmitter (argv):
 
     elefilelist = list()
     if options.dataset != '':
-        elefilelist = GetFileList(options.dataset)
+        elefilelist = das.getFileList()
     elif options.input != '':
         with open(options.input, 'r') as infile:
             for elefile in infile.readlines():

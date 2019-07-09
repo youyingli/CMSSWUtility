@@ -5,6 +5,7 @@ import json
 import subprocess
 import multiprocessing, time, datetime
 from optparse import OptionParser
+from CMSSWUtility.job_submitor.DASClient import DASClient
 
 def Option_Parser(argv):
 
@@ -83,30 +84,6 @@ def GetRealGenNumber (file, puweight, q):
         nevent += 1
         sumweight += ( gen_handle.product().weight() * puweight[int(nip)] if nip > 0 and nip < len(puweight) else 0 )
     q.put( [nevent, sumweight, ''] )
-
-def GetFileList(filename):
-
-    filetype = filename.split('/')[3]
-
-    query = 'file dataset=%s ' % filename
-    if filetype == 'USER':
-        query += 'instance=prod/phys03'
-
-    print 'Opening ' + filename
-
-    s = subprocess.Popen("dasgoclient -query='%s'" % query, shell=True, stdout=subprocess.PIPE)
-    stdout, err = s.communicate()
-    filelist = stdout.split('\n')
-
-    if len(filelist) == 1:
-        exit(0)
-        print 'Fail to open file ! Please check %s name' % filename
-    else:
-        print 'Sucessfully Open ' + filename
-
-    del filelist[-1]
-
-    return filelist
 
 class ParallelCalculator():
 
@@ -201,7 +178,8 @@ def GetPuweightFactor(PileupCfi, minBiasPileup):
 
 def GetInfo(options):
 
-    filelist = GetFileList( options.dataset )
+    das = DASClient(options.dataset) 
+    filelist = das.getFileList()
     puweight = GetPuweightFactor(options.PileupCfi ,options.minBiasPileup)
     p = ParallelCalculator(GetRealGenNumber, filelist, puweight, options.ncore)
     p.start()
