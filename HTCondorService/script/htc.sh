@@ -4,10 +4,11 @@ HTCondor_control="""+JobFlavour = "{0}"
 executable  = {1}/runjobs.sh
 arguments   = $(infile) $(outfile)
 
-output      = {1}/output/hello.$(ClusterId).$(ProcId).out
-error       = {1}/error/hello.$(ClusterId).$(ProcId).err
-log         = {1}/log/hello.$(ClusterId).log
+output      = {1}/output/runjob.$(ClusterId).$(ProcId).out
+error       = {1}/error/runjob.$(ClusterId).$(ProcId).err
+log         = {1}/log/htc.log
 
+request_cpus = {2} 
 max_retries = 1
 queue infile,outfile from {1}/IORecord.dat
 """
@@ -29,6 +30,8 @@ cmsRun {3} {4} inputFiles=$(cat $1) outputFile=$2
 from optparse import OptionParser
 from CMSSWUtility.job_submitor.DASClient import DASClient
 from CMSSWUtility.HTCondorService.HTCondorConfigManager import HTCondorConfigManager
+
+import htcondor
 import os, sys
 import json
 import subprocess
@@ -43,11 +46,6 @@ def Option_Parser(argv):
     parser.add_option('-c', '--config',
             type='str', dest='config', default='',
             help='Input your config file'
-            )
-    parser.add_option('-q', '--queue',
-            type='str', dest='queue', default='tomorrow',
-            help='Time limit for jobs. For example, espresso     = 20 minutes, microcentury = 1 hour, longlunch    = 2 hours    \
-            workday      = 8 hours, tomorrow     = 1 day, testmatch    = 3 days, nextweek     = 1 week'
             )
     parser.add_option( '--submit',
             action='store_true', dest='submit',
@@ -132,7 +130,7 @@ class HTCondorJobManager:
 
     def ExecutableManager(self, dryrun):
 
-        exelist = self.job_config.Executable.split()
+        exelist = self.job_config.Executable.split('/')
         self.exe = self.job_dir + '/' + exelist[-1]
 
         os.system('cp %s %s' % (self.job_config.Executable , self.exe))
@@ -151,13 +149,14 @@ class HTCondorJobManager:
 
                 if self.job_config.DataType == 'Data':
                     exefile.write("import FWCore.PythonUtilities.LumiList as LumiList\n")
-                    exefile.write("ss.source.lumisToProcess = LumiList.LumiList( filename = '%s' ).getVLuminosityBlockRange()\n\n" % self.job_config.LumiMask)
+                    exefile.write("process.source.lumisToProcess = LumiList.LumiList( filename = '%s' ).getVLuminosityBlockRange()\n\n" % self.job_config.LumiMask)
 
-                exefile.write("process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(%d) )\n" % 300 if dryrun else -1)
+                exefile.write("process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(%d) )\n" % (300 if dryrun else -1))
                 exefile.write("process.source = cms.Source ('PoolSource', fileNames = cms.untracked.vstring( options.inputFiles ))\n")
-                exefile.write("process.TFileService = cms.Service('TFileService', fileName = cms.string( options.outputFile ))\n\n")
+                exefile.write("process.TFileService = cms.Service('TFileService', fileName = cms.string( options.outputFile ))\n")
+                exefile.write("process.options.numberOfThreads=cms.untracked.uint32(%d)\n\n" % int(self.job_config.NCPU))
 
-    def JobMaterialProducer (self, queue):
+    def JobMaterialProducer (self):
 
         os.system('mkdir -p %s/output' % self.job_dir)
         os.system('mkdir -p %s/error' % self.job_dir)
@@ -168,7 +167,7 @@ class HTCondorJobManager:
                     os.getenv('HOME'),
                     os.geteuid(),
                     self.job_dir,
-                    self.exe,
+                    self.exe.split('/')[-1],
                     self.job_config.CmdLine
                     )
             script.write(content)
@@ -177,18 +176,18 @@ class HTCondorJobManager:
 
         with open(self.job_dir + '/runjobs.sub', 'w') as conder_file:
             content = HTCondor_control.format(
-                    queue,
-                    self.job_dir
+                    self.job_config.QUEUE,
+                    self.job_dir,
+                    self.job_config.NCPU
                     )
             conder_file.write(content)
 
     def JobSubmitter(self):
-        os.system('condor_submit %s/runjobs.sh' % self.job_dir)
+        os.system('condor_submit %s/runjobs.sub' % self.job_dir)
 
 def getProxy():
-    if not os.path.exists('%s/.x509up_u%d' % (os.getenv('HOME'), os.getuid())):
-        os.system('grid-proxy-init -debug -verify')
-        os.system('voms-proxy-init -voms cms -rfc -out ${HOME}/.x509up_u${UID} --valid 168:00')
+    os.system('grid-proxy-init -debug -verify')
+    os.system('voms-proxy-init -voms cms -rfc -out ${HOME}/.x509up_u${UID} --valid 168:00')
 
 
 def HTCondor (argv):
@@ -203,6 +202,8 @@ def HTCondor (argv):
 
     if options.submit:
 
+        getProxy()
+
         if options.config == '':
             print 'Please input your HTCondor config file'
             sys.exit()
@@ -212,12 +213,67 @@ def HTCondor (argv):
         htc_mgr = HTCondorJobManager(jobConfig)
         htc_mgr.JobSplitter()
         htc_mgr.ExecutableManager(options.dryrun)
-        htc_mgr.JobMaterialProducer(options.queue)
+        htc_mgr.JobMaterialProducer()
 
         if not options.dryrun:
             htc_mgr.JobSubmitter()
             print 'Your jobs have been submitted in HTCondor cluster !'
 
+    elif options.debug:
+        logfile = options.dir + '/log/htc.log'
+        if not os.path.exists(logfile):
+            print '%s is not job directory or no job submission.' % logfile
+            sys.exit(0)
+
+        htc_log = htcondor.JobEventLog(str(logfile))
+
+        problem_jobid = []
+        ntotal = 0
+        nfailed = 0
+        for log_event in htc_log.events(stop_after=0):
+            if log_event.type is htcondor.JobEventType.JOB_TERMINATED:
+                ntotal += 1
+                if log_event['ReturnValue'] != 0:
+                    nfailed += 1
+                    problem_jobid.append( log_event.proc )
+                    print 'please investigate error files in /.../error/* for jobid = %d' % log_event.proc
+
+        print '--------------------------- Job Summary ---------------------------'
+        print 'Your job : %s\n' %  options.dir
+        print 'Finished : (%d / %d)' % (ntotal - nfailed, ntotal)
+
+        if len(problem_jobid) != 0:
+            print 'Failed   : (%d / %d) \n' % (nfailed, ntotal)
+
+            IOcontent = []
+            with open(options.dir + '/IORecord.dat', 'r') as IOfile:
+                for line in IOfile.readlines():
+                    line = line.strip()
+                    IOcontent.append(line)
+
+            with open(options.dir + '/resubmit_IORecord.dat', 'w') as reIOfile:
+                for jobid in problem_jobid:
+                    reIOfile.write( IOcontent[jobid] + '\n' )
+
+            print 'After investigate error files and modify your codes, you can do resubmit by --resubmit'
+
+        else:
+            print '\n Your jobs are totally finished !'
+
+    elif options.resubmit:
+
+        getProxy()
+
+        with open(options.dir + '/resubmit_runjobs.sub', 'w') as reconder_file:
+            with open(options.dir + '/runjobs.sub') as conder_file:
+                for line in conder_file.readlines():
+                    reconder_file.write(line.replace('IORecord.dat', 'resubmit_IORecord.dat'))
+
+        os.system('condor_submit %s/resubmit_runjobs.sub' % options.dir)
+
+    else:
+        print 'No option is dound. Please use --help to see and specify --template, --submit, --debug or --resubmit !'
+
+
 if  __name__ == '__main__':
-    getProxy()
     sys.exit( HTCondor(sys.argv[1:]) )
