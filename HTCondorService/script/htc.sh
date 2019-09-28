@@ -262,8 +262,13 @@ def HTCondor (argv):
 
     elif options.resubmit:
 
+        if not os.path.exists(options.dir + '/resubmit_IORecord.dat'):
+            print '[ERROR] : Please do --debug to check the status or no job needs to be resubmitted !!'
+            sys.exit(0)
+
         getProxy()
 
+        os.system('rm ' + options.dir + '/log/htc.log')
         with open(options.dir + '/resubmit_runjobs.sub', 'w') as reconder_file:
             with open(options.dir + '/runjobs.sub') as conder_file:
                 for line in conder_file.readlines():
@@ -272,7 +277,7 @@ def HTCondor (argv):
         os.system('condor_submit %s/resubmit_runjobs.sub' % options.dir)
 
     else:
-        print 'No option is dound. Please use --help to see and specify --template, --submit, --debug or --resubmit !'
+        print '[ERROR] : No option is found. Please use --help to see and specify --template, --submit, --debug or --resubmit !'
 
 
 if  __name__ == '__main__':
