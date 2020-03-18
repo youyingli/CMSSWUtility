@@ -1,4 +1,4 @@
-from CMSSWUtility.Utils.ModifiedTH1 import ModifiedTH1
+from CMSSWUtility.PlotUtilities.ModifiedTH1 import ModifiedTH1
 import ROOT
 
 class TH1Service:
@@ -24,6 +24,10 @@ class TH1Service:
 
     def getPlot(self, name):
         return self.th1_set[name]
+
+    def write(self):
+        for name in self.th1_set.keys():
+            self.th1_set[name].write()
 
     def delete(self, name):
         self.th1_set[name].close()

@@ -13,6 +13,9 @@ class ModifiedTH1:
                     or create new plot by __init__(th1 = None, name, nbin, xmin, xmax)")
         self._hist.SetDirectory(0)
 
+    def write(self):
+        self._hist.Write()
+
     def close(self):
         self._hist.Delete()
 
@@ -133,3 +136,11 @@ class ModifiedTH1:
 
     def getBinWidth (self):
         return self._hist.GetXaxis().GetBinWidth(1)
+
+    def setOverFlow (self):
+        finalbin = self._hist.GetNbinsX()
+        self._hist.SetBinContent( finalbin, self._hist.GetBinContent( finalbin ) + self._hist.GetBinContent( finalbin+1 ) )
+
+    def setUnderFlow (self):
+        self._hist.SetBinContent( 1, self._hist.GetBinContent(0) + self._hist.GetBinContent(1) )
+

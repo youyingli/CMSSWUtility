@@ -16,7 +16,7 @@ def makeNormalPad():
 
 def makeTopPad():
     tpad = ROOT.TPad('TPad', '', 0., 0.245, 1., 0.98)
-    tpad.SetTopMargin(0.06)
+    tpad.SetTopMargin(0.08)
     tpad.SetBottomMargin(0.019)
     tpad.SetLeftMargin(0.135)
     tpad.SetRightMargin(0.06)
@@ -42,8 +42,8 @@ def makeRatioPlot(hNumerator, hDenominator, xTitle, yTitle, yRange = 1, color = 
 
     hRatioPlot = hNumerator.Clone('hRatioPlot')
     hRatioPlot.Divide(hDenominator)
-    hRatioPlot.SetTitleSize(0.15, 'xyz')
-    hRatioPlot.SetLabelSize(0.15, 'xyz')
+    hRatioPlot.SetTitleSize(0.13, 'xyz')
+    hRatioPlot.SetLabelSize(0.13, 'xyz')
     hRatioPlot.GetYaxis().SetTitleOffset(0.4)
     hRatioPlot.GetYaxis().SetNdivisions(905)
     hRatioPlot.GetYaxis().CenterTitle(True)

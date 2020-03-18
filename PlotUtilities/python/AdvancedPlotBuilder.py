@@ -1,7 +1,7 @@
-from CMSSWUtility.Utils.TH1Service import TH1Service
-from CMSSWUtility.Utils.PlotObject import *
-from CMSSWUtility.Utils.GlobalPlotSetting import *
-from CMSSWUtility.Utils.CMSMark import *
+from CMSSWUtility.PlotUtilities.TH1Service import TH1Service
+from CMSSWUtility.PlotUtilities.PlotObject import *
+from CMSSWUtility.PlotUtilities.GlobalPlotSetting import *
+from CMSSWUtility.PlotUtilities.CMSMark import *
 import ROOT
 import os
 import math
@@ -15,14 +15,14 @@ class AdvancedPlotBuilder:
         self._outdir = outdir
         self._th1service = TH1Service()
         self._stackplot = ROOT.THStack('hs', '')
-        self._legend = makeLegend(0.5, 0.7, 0.92, 0.92)
+        self._legend = makeLegend(0.5, 0.65, 0.92, 0.92)
         self._legend.SetNColumns(2)
         self._bkgcollection = list()
         self._sigcollection = list()
         self._bkginfos = list()
         self._systlist = list()
 
-    # Data mc
+    # Data
     def setBenchMark(self, filenames, color, style, legname, normtounity = False):
         self._makePackedPlots('hData', filenames)
         if normtounity:
@@ -33,10 +33,11 @@ class AdvancedPlotBuilder:
     # signal mc
     def setReference(self, tagname, filenames, color, style, legname, shift_factor = 1.):
         self._makePackedPlots(tagname, filenames)
-        self._th1service.getPlot(tagname).setScaleWeight(shift_factor * self._lumi)
+        #self._th1service.getPlot(tagname).setScaleWeight(shift_factor * self._lumi)
+        self._th1service.getPlot(tagname).setScaleWeight(shift_factor)
         self._th1service.getPlot(tagname).convertToLinePlot(color, style)
 
-        legstr = tagname + ' x ' + str(shift_factor) if shift_factor != 1. else tagname
+        legstr = legname + ' x ' + str(int(shift_factor)) if shift_factor != 1. else legname
         self._legend.AddEntry(self._th1service.getPlot(tagname).getObject(), legstr, 'L')
         self._sigcollection.append(tagname)
 
@@ -46,7 +47,8 @@ class AdvancedPlotBuilder:
         if normtounity:
             self._th1service.getPlot(tagname).normalizeToOne()
         else:
-            self._th1service.getPlot(tagname).setScaleWeight(scale_factor * self._lumi)
+            #self._th1service.getPlot(tagname).setScaleWeight(scale_factor * self._lumi)
+            self._th1service.getPlot(tagname).setScaleWeight(scale_factor)
 
         self._th1service.getPlot(tagname).convertToFillPlot(color, style)
         self._stackplot.Add(self._th1service.getPlot(tagname).getObject())
@@ -54,14 +56,15 @@ class AdvancedPlotBuilder:
         self._legend.AddEntry(self._th1service.getPlot(tagname).getObject(), legname, 'F')
         self._bkgcollection.append(tagname)
         for filename in filenames:
-            self._bkginfos.append([filename.replace('.root', ''), scale_factor * self._lumi])
+            #self._bkginfos.append([filename.replace('.root', ''), scale_factor * self._lumi])
+            self._bkginfos.append([filename.replace('.root', ''), scale_factor])
 
     def includeSystematics(self, systlist):
         self._systlist = systlist
 
 #    def drawDrivenOne(xTitle, unit):
 
-    def drawDrivenTwo(self, xTitle, unit, isLog = False):
+    def drawDrivenTwo(self, xTitle, unit = '', isLog = False):
         xrange = self._th1service.getPlot('hData').getXRange()
         self._nbin = self._th1service.getPlot('hData').getNbinsX()
         self._th1service.addNewTH1('hBkg', self._nbin, xrange[0], xrange[1])
@@ -109,12 +112,13 @@ class AdvancedPlotBuilder:
 
         if isLog:
             tpad.SetLogy()
-            self._stackplot.SetMinimum(0.01)
+            #self._stackplot.SetMinimum(0.1)
+            self._stackplot.SetMinimum(1)
             self._stackplot.SetMaximum(800 * self._th1service.getPlot('hData').getMaxContent())
         else:
             ROOT.TGaxis.SetMaxDigits(4)
-            self._stackplot.SetMinimum(0.)
-            self._stackplot.SetMaximum(1.6 * self._th1service.getPlot('hData').getMaxContent())
+            self._stackplot.SetMinimum(0)
+            self._stackplot.SetMaximum(2.1 * self._th1service.getPlot('hData').getMaxContent())
 
         self._legend.Draw()
         plotContent = makeCMSMark(self._lumi)
@@ -127,9 +131,10 @@ class AdvancedPlotBuilder:
         bpad.Draw()
         bpad.cd()
 
+        unit = (' (%s)' % unit) if unit != '' else ''
         ratioPlot = makeRatioPlot(self._th1service.getPlot('hData').getObject(), \
                                   self._th1service.getPlot('hBkg') .getObject(), \
-                                  xTitle + '(' + unit + ')', 'Data/MC')
+                                  xTitle + unit , 'Data/MC')
         ratioPlot.Draw('E1 X0')
         self._th1service.getPlot('ErrorPlotr').Draw('E2 same')
         hline = makeLine(ratioPlot, 0, 1, ROOT.kBlue, 7, 3)
@@ -168,15 +173,15 @@ class AdvancedPlotBuilder:
                 total.append([0., 0.])
                 totalr.append([0., 0.])
             elif len(self._systlist) != 0:
-                totalup   = math.sqrt(bkg[i][1] * bkg[i][1] + systerror2[0][i])
-                totaldown = math.sqrt(bkg[i][1] * bkg[i][1] + systerror2[1][i])
+                totalup   = math.sqrt(systerror2[0][i])
+                totaldown = math.sqrt(systerror2[1][i])
                 up   = bkg[i][0] + totalup
                 down = bkg[i][0] - totaldown
                 total. append ([(up + down) * 0.5, (up - down) * 0.5])
                 totalr.append ([(up + down) * 0.5 / bkg[i][0], (up - down) * 0.5 / bkg[i][0]])
             else:
                 total.append( [bkg[i][0], bkg[i][1]] )
-                totalr.append( [1., bkg[i][1] / bkg[i][0]] )
+                totalr.append( [1., 1.e-5] )
 
         return total, totalr
 
