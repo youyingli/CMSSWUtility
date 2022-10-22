@@ -15,7 +15,7 @@ queue infile,outfile from {1}/IORecord.dat
 
 scriptformat="""#!/bin/bash
 
-export X509_USER_PROXY={0}/.x509up_u{1}
+export X509_USER_PROXY={0}/x509up_u{1}
 if [ "$X509_USER_PROXY" != "" ]; then
     voms-proxy-info -all -file $X509_USER_PROXY
 fi
@@ -202,7 +202,7 @@ def HTCondor (argv):
 
     if options.submit:
 
-        getProxy()
+        #getProxy()
 
         if options.config == '':
             print 'Please input your HTCondor config file'
@@ -225,25 +225,46 @@ def HTCondor (argv):
             print '%s is not job directory or no job submission.' % logfile
             sys.exit(0)
 
-        htc_log = htcondor.JobEventLog(str(logfile))
+        #htc_log = htcondor.JobEventLog(str(logfile))
 
-        problem_jobid = []
-        ntotal = 0
-        nfailed = 0
-        for log_event in htc_log.events(stop_after=0):
-            if log_event.type is htcondor.JobEventType.JOB_TERMINATED:
-                ntotal += 1
-                if log_event['ReturnValue'] != 0:
-                    nfailed += 1
-                    problem_jobid.append( log_event.proc )
-                    print 'please investigate error files in /.../error/* for jobid = %d' % log_event.proc
+        #problem_jobid = []
+        #ntotal = 0
+        #nfailed = 0
+        #for log_event in htc_log.events(stop_after=0):
+        #    if log_event.type is htcondor.JobEventType.JOB_TERMINATED:
+        #        ntotal += 1
+        #        if log_event['ReturnValue'] != 0:
+        #            nfailed += 1
+        #            problem_jobid.append( log_event.proc )
+        #            print 'please investigate error files in /.../error/* for jobid = %d' % log_event.proc
+
+        with open(logfile, 'r') as f:
+            lines = f.readlines()
+
+        success = []
+        fail = []
+        for i, line in enumerate(lines):
+            if line.find('005') != -1 and line.find('Job terminated.') != -1:
+                job_id = int(line.split()[1].split('.')[1])
+                return_value = int(lines[i+1].split()[-1][:-1])
+                if return_value != 0:
+                    fail.append(job_id)
+                    print 'please investigate error files in /.../error/* for jobid = %d' % job_id
+                else:
+                    success.append(job_id)
+
+            if line.find('aborted') != -1:
+
+                job_id = int(line.split()[1].split('.')[1])
+                fail.append(job_id)
+                print 'timeout jobid = %d' % job_id
 
         print '--------------------------- Job Summary ---------------------------'
         print 'Your job : %s\n' %  options.dir
-        print 'Finished : (%d / %d)' % (ntotal - nfailed, ntotal)
+        print 'Finished : (%d / %d)' % (len(success), len(success)+len(fail))
 
-        if len(problem_jobid) != 0:
-            print 'Failed   : (%d / %d) \n' % (nfailed, ntotal)
+        if len(fail) != 0:
+            print 'Failed   : (%d / %d) \n' % (len(fail), len(success)+len(fail))
 
             IOcontent = []
             with open(options.dir + '/IORecord.dat', 'r') as IOfile:
@@ -252,7 +273,7 @@ def HTCondor (argv):
                     IOcontent.append(line)
 
             with open(options.dir + '/resubmit_IORecord.dat', 'w') as reIOfile:
-                for jobid in problem_jobid:
+                for jobid in fail:
                     reIOfile.write( IOcontent[jobid] + '\n' )
 
             print 'After investigate error files and modify your codes, you can do resubmit by --resubmit'
@@ -266,7 +287,7 @@ def HTCondor (argv):
             print '[ERROR] : Please do --debug to check the status or no job needs to be resubmitted !!'
             sys.exit(0)
 
-        getProxy()
+        #getProxy()
 
         os.system('rm ' + options.dir + '/log/htc.log')
         with open(options.dir + '/resubmit_runjobs.sub', 'w') as reconder_file:
