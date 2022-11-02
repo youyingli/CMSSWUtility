@@ -267,7 +267,7 @@ def HTCondor (argv):
             print 'Failed   : (%d / %d) \n' % (len(fail), len(success)+len(fail))
 
             IOcontent = []
-            with open(options.dir + '/IORecord.dat', 'r') as IOfile:
+            with open(options.dir + '/IORecord.dat' if not os.path.isfile(options.dir + '/resubmit_IORecord_done.dat') else options.dir + '/resubmit_IORecord_done.dat'  , 'r') as IOfile:
                 for line in IOfile.readlines():
                     line = line.strip()
                     IOcontent.append(line)
@@ -296,6 +296,7 @@ def HTCondor (argv):
                     reconder_file.write(line.replace('IORecord.dat', 'resubmit_IORecord.dat'))
 
         os.system('condor_submit %s/resubmit_runjobs.sub' % options.dir)
+        os.system('mv %s/resubmit_IORecord.dat %s/resubmit_IORecord_done.dat' % (options.dir, options.dir))
 
     else:
         print '[ERROR] : No option is found. Please use --help to see and specify --template, --submit, --debug or --resubmit !'
